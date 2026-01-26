@@ -12,8 +12,8 @@ function App() {
   }, [checkAuthFromCookies])
 
   const googleAuthUrl = useMemo(() => {
-    const base = import.meta.env.VITE_API_BASE_URL ?? import.meta.env.VITE_BACKEND_URL ?? ''
-    return `${base}/auth/google`;
+    const base = import.meta.env.VITE_API_BASE_URL ?? ''
+    return `${base}/api/auth/google`;
   }, [])
 
   if (isAuthenticated) {

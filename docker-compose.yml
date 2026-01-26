@@ -12,7 +12,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-filestorage}
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-your-google-client-id}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-your-google-client-secret}
-      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:3000/auth/google/redirect}
+      GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:3000/auth/google/callback}
       JWT_SECRET: ${JWT_SECRET:-your-jwt-secret}
     ports:
       - "${PORT:-3000}:3000"

@@ -1,0 +1,20 @@
+.home {
+  max-width: 1040px;
+
+  &__nav {
+    width: 100%;
+    padding: 12px 0;
+    color: #c5cbd6;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  }
+
+  &__content {
+    padding: 32px 0;
+    color: #f8fafc;
+
+    h1 {
+      margin: 0 0 10px;
+      font-size: 28px;
+    }
+  }
+}

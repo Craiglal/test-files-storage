@@ -20,10 +20,12 @@ export class AuthService {
     return this.jwtService.sign(payload);
   }
 
-  async signIn(user) {
+  async signIn(user: RegisterUserDto): Promise<string> {
     if (!user) {
       throw new BadRequestException('Unauthenticated');
     }
+
+    console.log({ user });
 
     const userExists = await this.findUserByEmail(user.email);
 
@@ -37,9 +39,10 @@ export class AuthService {
     });
   }
 
-  async registerUser(user: RegisterUserDto) {
+  async registerUser(user: RegisterUserDto): Promise<string> {
     try {
-      const newUser = await this.userRepository.create(user);
+      const newUser = this.userRepository.create(user);
+      await this.userRepository.save(newUser);
 
       return this.generateJwt({
         sub: newUser.id,

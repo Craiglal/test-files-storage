@@ -6,6 +6,10 @@ import config from './config/config';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
 import { User } from './user/entities/user.entity';
+import { FolderModule } from './folder/folder.module';
+import { Folder } from './folder/entities/folder.entity';
+import { File } from './file/entities/file.entity';
+import { FileModule } from './file/file.module';
 
 @Module({
   imports: [
@@ -23,12 +27,14 @@ import { User } from './user/entities/user.entity';
         username: cfg.database.username,
         password: cfg.database.password,
         database: cfg.database.name,
-        entities: [User],
+        entities: [User, Folder, File],
         synchronize: true,
       }),
     }),
     AuthModule,
     UserModule,
+    FolderModule,
+    FileModule,
   ],
   controllers: [],
   providers: [],

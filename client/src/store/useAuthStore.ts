@@ -1,11 +1,11 @@
 import { create } from 'zustand'
 
-const GOOGLE_COOKIE_KEY = 'access_token='
+const AUTH_COOKIE_KEY = 'access_token='
 
 const hasAccessToken = () =>
   document.cookie
     .split(';')
-    .some((entry) => entry.trim().startsWith(GOOGLE_COOKIE_KEY))
+    .some((entry) => entry.trim().startsWith(AUTH_COOKIE_KEY))
 
 type AuthState = {
   isAuthenticated: boolean

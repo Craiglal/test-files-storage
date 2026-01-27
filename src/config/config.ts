@@ -20,5 +20,5 @@ export default registerAs('app', () => ({
   jwt: {
     secret: process.env.JWT_SECRET || 'default_jwt_secret',
   },
-  viteApiBaseUrl: process.env.VITE_API_BASE_URL || 'http://localhost:5173',
+  viteApiBaseUrl: process.env.VITE_API_BASE_URL || 'http://localhost',
 }));

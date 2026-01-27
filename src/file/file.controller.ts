@@ -1,12 +1,14 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBearerAuth,
   ApiBody,
   ApiCreatedResponse,
   ApiExtraModels,
+  ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiTags,
   getSchemaPath,
 } from '@nestjs/swagger';
@@ -15,13 +17,14 @@ import { CreateUploadRequestDto } from './dto/create-upload-request.dto';
 import { FileService } from './file.service';
 import { File } from './entities/file.entity';
 import { UploadPartDto } from './dto/complete-upload.dto';
+import { RenameFileDto } from './dto/rename-file.dto';
 
 @ApiTags('files')
 @ApiBearerAuth()
 @ApiExtraModels(File, CreateUploadRequestDto, CompleteUploadDto, UploadPartDto)
 @Controller('files')
 export class FileController {
-  constructor(private readonly fileService: FileService) {}
+  constructor(private readonly fileService: FileService) { }
 
   @Post('upload-request')
   @ApiOperation({
@@ -69,5 +72,33 @@ export class FileController {
   @ApiBody({ schema: { $ref: getSchemaPath(CompleteUploadDto) } })
   completeUpload(@Body() dto: CompleteUploadDto) {
     return this.fileService.completeUpload(dto);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Rename file', description: 'Rename a file without reuploading.' })
+  @ApiOkResponse({ description: 'File renamed.', schema: { $ref: getSchemaPath(File) } })
+  @ApiBadRequestResponse({ description: 'Validation failed.' })
+  @ApiBody({ schema: { $ref: getSchemaPath(RenameFileDto) } })
+  renameFile(@Param('id') id: string, @Body() dto: RenameFileDto) {
+    return this.fileService.renameFile(id, dto);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete file', description: 'Deletes the file and removes its object from storage.' })
+  @ApiOkResponse({ description: 'File deleted.', schema: { type: 'object', properties: { ok: { type: 'boolean' } } } })
+  @ApiBadRequestResponse({ description: 'File not found or bucket not configured.' })
+  removeFile(@Param('id') id: string) {
+    return this.fileService.deleteFile(id);
+  }
+
+  @Get()
+  @ApiOperation({ summary: 'List files', description: 'List files for an owner, optionally filtered by folder id (omit or use "root" for top-level).' })
+  @ApiQuery({ name: 'ownerId', required: true, description: 'Owner id (uuid)' })
+  @ApiQuery({ name: 'folderId', required: false, description: 'Folder id; omit or use "root" for top-level' })
+  @ApiOkResponse({ description: 'Files list', schema: { type: 'array', items: { $ref: getSchemaPath(File) } } })
+  @ApiNotFoundResponse({ description: 'Folder not found.' })
+  listFiles(@Query('ownerId') ownerId: string, @Query('folderId') folderId?: string) {
+    const normalizedFolder = folderId === 'root' ? null : folderId;
+    return this.fileService.listFiles(ownerId, normalizedFolder);
   }
 }

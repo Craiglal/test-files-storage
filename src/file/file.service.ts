@@ -8,15 +8,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import {
   CompleteMultipartUploadCommand,
   CreateMultipartUploadCommand,
+  DeleteObjectCommand,
   S3Client,
   UploadPartCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
 import { File } from './entities/file.entity';
 import { CreateUploadRequestDto, MAX_FILE_BYTES } from './dto/create-upload-request.dto';
 import { CompleteUploadDto } from './dto/complete-upload.dto';
+import { RenameFileDto } from './dto/rename-file.dto';
 import { Folder } from '../folder/entities/folder.entity';
 
 const PART_SIZE = 10 * 1024 * 1024; // 10MB
@@ -40,7 +42,7 @@ export class FileService {
     private readonly fileRepo: Repository<File>,
     @InjectRepository(Folder)
     private readonly folderRepo: Repository<Folder>,
-  ) {}
+  ) { }
 
   private buildStorageKey(ownerId: string, fileId: string, version: number) {
     return `u/${ownerId}/file/${fileId}/v/${version}`;
@@ -132,6 +134,21 @@ export class FileService {
     };
   }
 
+  async listFiles(ownerId: string, folderId?: string | null) {
+    if (folderId) {
+      const folder = await this.folderRepo.findOne({ where: { id: folderId } });
+      if (!folder) {
+        throw new NotFoundException('Folder not found');
+      }
+    }
+
+    const folderClause = folderId ? folderId : IsNull();
+    return this.fileRepo.find({
+      where: { ownerId, folderId: folderClause },
+      order: { updatedAt: 'DESC' },
+    });
+  }
+
   async completeUpload(dto: CompleteUploadDto) {
     const file = await this.fileRepo.findOne({ where: { id: dto.fileId } });
     if (!file) {
@@ -154,6 +171,39 @@ export class FileService {
         MultipartUpload: { Parts: parts },
       }),
     );
+
+    return { ok: true };
+  }
+
+  async renameFile(id: string, dto: RenameFileDto) {
+    const file = await this.fileRepo.findOne({ where: { id } });
+    if (!file) {
+      throw new NotFoundException('File not found');
+    }
+
+    file.originalName = dto.name;
+    await this.fileRepo.save(file);
+    return file;
+  }
+
+  async deleteFile(id: string) {
+    const file = await this.fileRepo.findOne({ where: { id } });
+    if (!file) {
+      throw new NotFoundException('File not found');
+    }
+
+    if (!this.bucket) {
+      throw new BadRequestException('S3 bucket is not configured');
+    }
+
+    await this.s3.send(
+      new DeleteObjectCommand({
+        Bucket: this.bucket,
+        Key: file.storageKey,
+      }),
+    );
+
+    await this.fileRepo.delete({ id: file.id });
 
     return { ok: true };
   }

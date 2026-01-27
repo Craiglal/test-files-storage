@@ -8,12 +8,15 @@ import { IsNull, QueryFailedError, Repository } from 'typeorm';
 import { CreateFolderDto } from './dto/create-folder.dto';
 import { RenameFolderDto } from './dto/rename-folder.dto';
 import { Folder } from './entities/folder.entity';
+import { File } from '../file/entities/file.entity';
 
 @Injectable()
 export class FolderService {
   constructor(
     @InjectRepository(Folder)
     private readonly folderRepository: Repository<Folder>,
+    @InjectRepository(File)
+    private readonly fileRepository: Repository<File>,
   ) { }
 
   async createFolder(dto: CreateFolderDto): Promise<Folder> {
@@ -52,6 +55,24 @@ export class FolderService {
       throw new NotFoundException('Folder not found');
     }
     return folder;
+  }
+
+  async getContents(folderId?: string | null) {
+    const parentClause = folderId && folderId !== 'root' ? folderId : IsNull();
+
+    if (folderId && folderId !== 'root') {
+      const exists = await this.folderRepository.findOne({ where: { id: folderId } });
+      if (!exists) {
+        throw new NotFoundException('Folder not found');
+      }
+    }
+
+    const [folders, files] = await Promise.all([
+      this.folderRepository.find({ where: { parentId: parentClause }, order: { name: 'ASC' } }),
+      this.fileRepository.find({ where: { folderId: parentClause }, order: { originalName: 'ASC' } }),
+    ]);
+
+    return { folders, files };
   }
 
   async removeFolder(id: string): Promise<void> {

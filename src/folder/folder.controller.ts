@@ -7,6 +7,7 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiParam,
   ApiTags,
   getSchemaPath,
 } from '@nestjs/swagger';
@@ -14,9 +15,10 @@ import { CreateFolderDto } from './dto/create-folder.dto';
 import { RenameFolderDto } from './dto/rename-folder.dto';
 import { FolderService } from './folder.service';
 import { Folder } from './entities/folder.entity';
+import { File } from '../file/entities/file.entity';
 
 @ApiTags('folders')
-@ApiExtraModels(Folder)
+@ApiExtraModels(Folder, File)
 @Controller('folders')
 export class FolderController {
   constructor(private readonly folderService: FolderService) { }
@@ -31,6 +33,30 @@ export class FolderController {
   @ApiBody({ type: CreateFolderDto })
   create(@Body() dto: CreateFolderDto) {
     return this.folderService.createFolder(dto);
+  }
+
+  @Get(':id/contents')
+  @ApiOperation({ summary: 'Get folder contents (child folders and files)' })
+  @ApiParam({ name: 'id', description: 'Folder id or "root" for top-level' })
+  @ApiOkResponse({
+    description: 'Child folders and files',
+    schema: {
+      type: 'object',
+      properties: {
+        folders: {
+          type: 'array',
+          items: { $ref: getSchemaPath(Folder) },
+        },
+        files: {
+          type: 'array',
+          items: { $ref: getSchemaPath(File) },
+        },
+      },
+    },
+  })
+  @ApiNotFoundResponse({ description: 'Folder not found' })
+  async getContents(@Param('id') id: string) {
+    return this.folderService.getContents(id);
   }
 
   @Get(':id')

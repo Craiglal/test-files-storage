@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import {
   ApiBadRequestResponse,
   ApiBody,
@@ -8,6 +8,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
   getSchemaPath,
 } from '@nestjs/swagger';
@@ -35,9 +36,28 @@ export class FolderController {
     return this.folderService.createFolder(dto);
   }
 
+  @Get('search')
+  @ApiOperation({ summary: 'Search folders and files by name' })
+  @ApiQuery({ name: 'ownerId', required: true, description: 'Owner id (uuid)' })
+  @ApiQuery({ name: 'q', required: true, description: 'Search term applied to folder and file names' })
+  @ApiOkResponse({
+    description: 'Matching folders and files',
+    schema: {
+      type: 'object',
+      properties: {
+        folders: { type: 'array', items: { $ref: getSchemaPath(Folder) } },
+        files: { type: 'array', items: { $ref: getSchemaPath(File) } },
+      },
+    },
+  })
+  search(@Query('ownerId') ownerId: string, @Query('q') q: string) {
+    return this.folderService.searchByName(ownerId, q);
+  }
+
   @Get(':id/contents')
   @ApiOperation({ summary: 'Get folder contents (child folders and files)' })
   @ApiParam({ name: 'id', description: 'Folder id or "root" for top-level' })
+  @ApiQuery({ name: 'ownerId', required: true, description: 'Owner id (uuid)' })
   @ApiOkResponse({
     description: 'Child folders and files',
     schema: {
@@ -55,8 +75,8 @@ export class FolderController {
     },
   })
   @ApiNotFoundResponse({ description: 'Folder not found' })
-  async getContents(@Param('id') id: string) {
-    return this.folderService.getContents(id);
+  async getContents(@Param('id') id: string, @Query('ownerId') ownerId: string) {
+    return this.folderService.getContents(ownerId, id);
   }
 
   @Get(':id')
@@ -69,6 +89,7 @@ export class FolderController {
 
   @Get(':id/children')
   @ApiOperation({ summary: 'List child folders', description: 'List children of the given folder id.' })
+  @ApiQuery({ name: 'ownerId', required: true, description: 'Owner id (uuid)' })
   @ApiOkResponse({
     description: 'Child folders list.',
     schema: {
@@ -76,12 +97,13 @@ export class FolderController {
       items: { $ref: getSchemaPath(Folder) },
     },
   })
-  listChildren(@Param('id') id: string) {
-    return this.folderService.listChildren(id);
+  listChildren(@Param('id') id: string, @Query('ownerId') ownerId: string) {
+    return this.folderService.listChildren(ownerId, id);
   }
 
   @Get()
   @ApiOperation({ summary: 'List root folders', description: 'List folders without a parent.' })
+  @ApiQuery({ name: 'ownerId', required: true, description: 'Owner id (uuid)' })
   @ApiOkResponse({
     description: 'Root folders list.',
     schema: {
@@ -89,8 +111,8 @@ export class FolderController {
       items: { $ref: getSchemaPath(Folder) },
     },
   })
-  listRoots() {
-    return this.folderService.listChildren(null);
+  listRoots(@Query('ownerId') ownerId: string) {
+    return this.folderService.listChildren(ownerId, null);
   }
 
   @Delete(':id')

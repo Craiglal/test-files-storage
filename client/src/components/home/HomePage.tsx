@@ -7,6 +7,7 @@ import { FolderGrid, type FolderItem } from './FolderGrid';
 import { FileList, type FileItem } from './FileList';
 import { UploadPanel } from './UploadPanel';
 import { apiUrl, formatBytes, getApiErrorMessage, getErrorMessage, getOwnerId } from '../../lib/api';
+import { useAuthStore } from '../../store/useAuthStore';
 
 type UploadRequestResponse = {
   fileId: string;
@@ -17,10 +18,16 @@ type UploadRequestResponse = {
 };
 
 export function HomePage() {
+  const ownerId = useMemo(() => getOwnerId(), []);
   const [query, setQuery] = useState('');
   const [trail, setTrail] = useState<Crumb[]>([{ id: 'root', label: 'Root' }]);
   const [folders, setFolders] = useState<FolderItem[]>([]);
   const [files, setFiles] = useState<FileItem[]>([]);
+  const [searchResults, setSearchResults] = useState<{
+    folders: FolderItem[];
+    files: FileItem[];
+  } | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [fileToDelete, setFileToDelete] = useState<FileItem | null>(null);
@@ -31,15 +38,17 @@ export function HomePage() {
   const [folderRenameValue, setFolderRenameValue] = useState('');
   const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  const logout = useAuthStore((state) => state.logout);
 
-  const filteredFolders = useMemo(
-    () => folders.filter((f) => f.name.toLowerCase().includes(query.toLowerCase())),
-    [folders, query],
-  );
-  const filteredFiles = useMemo(
-    () => files.filter((f) => f.name.toLowerCase().includes(query.toLowerCase())),
-    [files, query],
-  );
+  const viewFolders = useMemo(() => {
+    if (searchResults) return searchResults.folders;
+    return folders;
+  }, [folders, searchResults]);
+
+  const viewFiles = useMemo(() => {
+    if (searchResults) return searchResults.files;
+    return files;
+  }, [files, searchResults]);
 
   useEffect(() => {
     const saved = localStorage.getItem('vreal_drive_trail');
@@ -72,7 +81,7 @@ export function HomePage() {
         const currentFolderId = trail[trail.length - 1]?.id ?? 'root';
         const folderPath = currentFolderId || 'root';
 
-        const res = await fetch(apiUrl(`/api/folders/${folderPath}/contents`), {
+        const res = await fetch(apiUrl(`/api/folders/${folderPath}/contents?ownerId=${ownerId}`), {
           credentials: 'include',
         });
 
@@ -92,12 +101,19 @@ export function HomePage() {
           updatedAt: new Date(f.updatedAt).toLocaleString(),
         }));
 
-        const mappedFiles: FileItem[] = data.files.map((item) => ({
-          id: item.id,
-          name: item.originalName,
-          sizeLabel: formatBytes(Number(item.size)),
-          updatedAt: new Date(item.updatedAt).toLocaleString(),
-        }));
+        const mappedFiles: FileItem[] = data.files.map((item) => {
+          const itemOwnerId = (item as any).ownerId as string | undefined;
+          const itemIsPublic = Boolean((item as any).isPublic);
+          return {
+            id: item.id,
+            name: item.originalName,
+            sizeLabel: formatBytes(Number(item.size)),
+            updatedAt: new Date(item.updatedAt).toLocaleString(),
+            ownerId: itemOwnerId ?? '',
+            isPublic: itemIsPublic,
+            canManage: itemOwnerId === ownerId && !itemIsPublic,
+          };
+        });
 
         setFolders(mappedFolders);
         setFiles(mappedFiles);
@@ -111,9 +127,67 @@ export function HomePage() {
     loadContents();
   }, [trail]);
 
-  const handleSearch = () => {
-    // TODO: hook into API search
-    console.log('search', query);
+  const handleSearch = async () => {
+    const term = query.trim();
+    if (!term) {
+      setSearchResults(null);
+      return;
+    }
+    if (isSearching) return;
+
+    setIsSearching(true);
+    try {
+      const ownerId = getOwnerId();
+      const res = await fetch(
+        apiUrl(`/api/folders/search?ownerId=${ownerId}&q=${encodeURIComponent(term)}`),
+        { credentials: 'include' },
+      );
+
+      if (!res.ok) {
+        const message = await getApiErrorMessage(res, 'Search failed');
+        throw new Error(message);
+      }
+
+      const data = (await res.json()) as {
+        folders: { id: string; name: string; updatedAt: string }[];
+        files: { id: string; originalName: string; size: string | number; updatedAt: string }[];
+      };
+
+      const mappedFolders: FolderItem[] = data.folders.map((f) => ({
+        id: f.id,
+        name: f.name,
+        updatedAt: new Date(f.updatedAt).toLocaleString(),
+      }));
+
+      const mappedFiles: FileItem[] = data.files.map((item) => {
+        const itemOwnerId = (item as any).ownerId as string | undefined;
+        const itemIsPublic = Boolean((item as any).isPublic);
+        return {
+          id: item.id,
+          name: item.originalName,
+          sizeLabel: formatBytes(Number(item.size)),
+          updatedAt: new Date(item.updatedAt).toLocaleString(),
+          ownerId: itemOwnerId ?? '',
+          isPublic: itemIsPublic,
+          canManage: itemOwnerId === ownerId && !itemIsPublic,
+        };
+      });
+
+      setSearchResults({ folders: mappedFolders, files: mappedFiles });
+    } catch (err) {
+      console.error(err);
+      const message = getErrorMessage(err, 'Search failed');
+      toast.error(message);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleQueryChange = (value: string) => {
+    setQuery(value);
+    if (!value.trim()) {
+      setSearchResults(null);
+    }
   };
 
   const handleOpenFolder = (folder: FolderItem) => {
@@ -237,16 +311,59 @@ export function HomePage() {
     }
   };
 
-  const handleOpenFile = (file: FileItem) => {
-    console.log('open file', file);
+  const handleOpenFile = async (file: FileItem) => {
+    try {
+      const ownerId = getOwnerId();
+      const params = new URLSearchParams({ ownerId });
+
+      const res = await fetch(apiUrl(`/api/files/${file.id}/download?${params.toString()}`), {
+        credentials: 'include',
+      });
+
+      if (!res.ok) {
+        const message = await getApiErrorMessage(res, 'Failed to get download link');
+        throw new Error(message);
+      }
+
+      const data = (await res.json()) as { url?: string; fileName?: string };
+      if (!data.url) {
+        throw new Error('Missing download URL');
+      }
+
+      // trigger browser download with a temporary anchor
+      const anchor = document.createElement('a');
+      anchor.href = data.url;
+      anchor.download = data.fileName || file.name;
+      anchor.target = '_blank';
+      anchor.rel = 'noopener';
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+    } catch (err) {
+      console.error(err);
+      const message = getErrorMessage(err, 'Download failed');
+      toast.error(message);
+    }
+  };
+
+  const handleLogout = () => {
+    logout();
+    setSearchResults(null);
+    setFolders([]);
+    setFiles([]);
+    setTrail([{ id: 'root', label: 'Root' }]);
+    toast.info('Logged out');
+    window.location.href = '/';
   };
 
   const handleRenameFile = (file: FileItem) => {
+    if (!file.canManage) return;
     setFileToRename(file);
     setRenameValue(file.name);
   };
 
   const handleDeleteFile = (file: FileItem) => {
+    if (!file.canManage) return;
     setFileToDelete(file);
   };
 
@@ -306,7 +423,7 @@ export function HomePage() {
     }
   };
 
-  const handleUpload = async (fileList: FileList | null) => {
+  const handleUpload = async (fileList: FileList | null, isPublic: boolean) => {
     if (!fileList?.length) return;
 
     const filesArray = Array.from(fileList);
@@ -333,6 +450,7 @@ export function HomePage() {
             originalName: file.name,
             mime: file.type || 'application/octet-stream',
             size: file.size,
+            isPublic,
           }),
         });
 
@@ -391,6 +509,9 @@ export function HomePage() {
           name: file.name,
           sizeLabel: formatBytes(file.size),
           updatedAt: 'just now',
+          ownerId,
+          isPublic,
+          canManage: !isPublic,
         };
 
         setFiles((prev) => [newFile, ...prev]);
@@ -431,6 +552,9 @@ export function HomePage() {
           <button type="button" className="ghost" onClick={handleCreateFolder}>
             + New Folder
           </button>
+          <button type="button" className="ghost" onClick={handleLogout}>
+            Logout
+          </button>
         </div>
       </header>
 
@@ -439,12 +563,12 @@ export function HomePage() {
           <div>
             <Breadcrumbs trail={trail} onSelect={handleGoTo} />
           </div>
-          <SearchBar value={query} onChange={setQuery} onSubmit={handleSearch} />
+          <SearchBar value={query} onChange={handleQueryChange} onSubmit={handleSearch} />
         </div>
 
         <section className="home__grid">
           <FolderGrid
-            folders={filteredFolders}
+            folders={viewFolders}
             onOpen={handleOpenFolder}
             onRename={handleRenameFolder}
             onDelete={handleDeleteFolder}
@@ -452,7 +576,7 @@ export function HomePage() {
           />
           <UploadPanel onUpload={handleUpload} isUploading={isUploading} uploadProgress={uploadProgress} />
           <FileList
-            files={filteredFiles}
+            files={viewFiles}
             onOpen={handleOpenFile}
             onRename={handleRenameFile}
             onDelete={handleDeleteFile}

@@ -206,6 +206,11 @@
         color: #fda4af;
         border-color: rgba(255, 99, 132, 0.2);
       }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
     }
   }
 }
@@ -307,6 +312,11 @@
         color: #fda4af;
         border-color: rgba(255, 99, 132, 0.2);
       }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
     }
   }
 }
@@ -320,6 +330,46 @@
   place-items: center;
   color: #e8ecf5;
   cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+}
+
+.upload__runner {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 10px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.upload--active .upload__runner {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.upload__runner-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #7c3aed 0%, #a855f7 50%, #7c3aed 100%);
+  background-size: 200% 100%;
+  animation: upload-run 1.2s linear infinite;
+  transition: width 0.2s ease;
+}
+
+@keyframes upload-run {
+  from {
+    background-position: 0% 0;
+  }
+
+  to {
+    background-position: -200% 0;
+  }
 }
 
 .ghost {

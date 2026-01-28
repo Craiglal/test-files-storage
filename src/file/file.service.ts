@@ -9,6 +9,7 @@ import {
   CompleteMultipartUploadCommand,
   CreateMultipartUploadCommand,
   DeleteObjectCommand,
+  GetObjectCommand,
   S3Client,
   UploadPartCommand,
 } from '@aws-sdk/client-s3';
@@ -48,6 +49,12 @@ export class FileService {
     return `u/${ownerId}/file/${fileId}/v/${version}`;
   }
 
+  private buildContentDisposition(fileName: string) {
+    const safeName = fileName.replace(/[^ -~]/g, '_');
+    const encoded = encodeURIComponent(fileName);
+    return `attachment; filename="${safeName}"; filename*=UTF-8''${encoded}`;
+  }
+
   private assertSizeWithinLimit(size: unknown) {
     const num = Number(size);
     if (!Number.isFinite(num) || num <= 0) {
@@ -65,6 +72,7 @@ export class FileService {
     }
 
     const size = this.assertSizeWithinLimit(dto.size);
+    const isPublic = dto.isPublic ?? false;
 
     let folder: Folder | null = null;
     if (dto.folderId) {
@@ -88,6 +96,7 @@ export class FileService {
       storageKey,
       checksum: dto.checksum ?? null,
       version,
+      isPublic,
       folder,
     });
 
@@ -142,9 +151,33 @@ export class FileService {
       }
     }
 
+    const qb = this.fileRepo
+      .createQueryBuilder('file')
+      .where('(file.ownerId = :ownerId OR file.isPublic = true)', { ownerId })
+      .orderBy('file.updatedAt', 'DESC');
+
+    if (folderId === null) {
+      qb.andWhere('file.folderId IS NULL');
+    } else if (folderId) {
+      qb.andWhere('file.folderId = :folderId', { folderId });
+    } else {
+      qb.andWhere('file.folderId IS NULL');
+    }
+
+    return qb.getMany();
+  }
+
+  async listPublicFiles(folderId?: string | null) {
+    if (folderId) {
+      const folder = await this.folderRepo.findOne({ where: { id: folderId } });
+      if (!folder) {
+        throw new NotFoundException('Folder not found');
+      }
+    }
+
     const folderClause = folderId ? folderId : IsNull();
     return this.fileRepo.find({
-      where: { ownerId, folderId: folderClause },
+      where: { folderId: folderClause, isPublic: true },
       order: { updatedAt: 'DESC' },
     });
   }
@@ -206,5 +239,33 @@ export class FileService {
     await this.fileRepo.delete({ id: file.id });
 
     return { ok: true };
+  }
+
+  async getDownloadUrl(id: string, requesterId?: string) {
+    if (!this.bucket) {
+      throw new BadRequestException('S3 bucket is not configured');
+    }
+
+    const file = await this.fileRepo.findOne({ where: { id } });
+    if (!file) {
+      throw new NotFoundException('File not found');
+    }
+
+    // Only owner can download unless the file is public
+    if (!file.isPublic) {
+      if (!requesterId || file.ownerId !== requesterId) {
+        throw new NotFoundException('File not found');
+      }
+    }
+
+    const command = new GetObjectCommand({
+      Bucket: this.bucket,
+      Key: file.storageKey,
+      ResponseContentDisposition: this.buildContentDisposition(file.originalName),
+      ResponseContentType: file.mime || undefined,
+    });
+    const url = await getSignedUrl(this.s3, command, { expiresIn: 900 });
+
+    return { url, fileName: file.originalName, mime: file.mime, size: file.size };
   }
 }

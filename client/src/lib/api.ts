@@ -28,6 +28,10 @@ export function getAccessToken(): string | null {
     ?.slice(AUTH_COOKIE_KEY.length) ?? null;
 }
 
+export function clearAccessTokenCookie() {
+  document.cookie = `${AUTH_COOKIE_KEY}; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/`;
+}
+
 export function getOwnerId(): string {
   const token = getAccessToken();
   const payload = token ? decodeJwtPayload(token) : null;

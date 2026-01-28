@@ -1,7 +1,8 @@
+import { useState } from 'react';
 import { toast } from 'react-toastify';
 
 type UploadPanelProps = {
-  onUpload: (files: FileList | null) => void;
+  onUpload: (files: FileList | null, isPublic: boolean) => void;
   isUploading: boolean;
   uploadProgress: number;
 };
@@ -9,9 +10,11 @@ type UploadPanelProps = {
 const MAX_SIZE_BYTES = 2 * 1024 * 1024 * 1024; // 2GB hard limit
 
 export function UploadPanel({ onUpload, isUploading, uploadProgress }: UploadPanelProps) {
+  const [isPublic, setIsPublic] = useState(false);
+
   const handleSelect = (files: FileList | null, resetInput: () => void) => {
     if (!files?.length) {
-      onUpload(files);
+      onUpload(files, isPublic);
       return;
     }
 
@@ -22,7 +25,7 @@ export function UploadPanel({ onUpload, isUploading, uploadProgress }: UploadPan
       return;
     }
 
-    onUpload(files);
+    onUpload(files, isPublic);
   };
 
   return (
@@ -33,8 +36,20 @@ export function UploadPanel({ onUpload, isUploading, uploadProgress }: UploadPan
           <p className="muted">Drop files here or browse to upload (max 2GB)</p>
         </div>
       </div>
-      <label className="upload" htmlFor="file-input">
-        <span>{isUploading ? 'Uploading...' : 'Drag & drop files or click to browse'}</span>
+      <label className={`upload ${isUploading ? 'upload--active' : ''}`} htmlFor="file-input">
+        <span>
+          {isUploading
+            ? `Uploading... ${Math.round(uploadProgress)}%`
+            : 'Drag & drop files or click to browse'}
+        </span>
+        {isUploading && (
+          <div className="upload__runner">
+            <div
+              className="upload__runner-fill"
+              style={{ width: `${Math.max(uploadProgress, 2)}%` }}
+            />
+          </div>
+        )}
         <input
           id="file-input"
           type="file"
@@ -44,12 +59,17 @@ export function UploadPanel({ onUpload, isUploading, uploadProgress }: UploadPan
           hidden
         />
       </label>
-      {isUploading && (
-        <div className="upload__progress">
-          <progress value={uploadProgress} max={100} />
-          <span className="muted small">{uploadProgress}%</span>
-        </div>
-      )}
+      <div className="upload__options">
+        <label className="checkbox">
+          <input
+            type="checkbox"
+            checked={isPublic}
+            onChange={(e) => setIsPublic(e.target.checked)}
+            disabled={isUploading}
+          />
+          <span>Make file public</span>
+        </label>
+      </div>
     </div>
   );
 }

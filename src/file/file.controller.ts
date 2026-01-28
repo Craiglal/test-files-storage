@@ -26,6 +26,16 @@ import { RenameFileDto } from './dto/rename-file.dto';
 export class FileController {
   constructor(private readonly fileService: FileService) { }
 
+  @Get('public')
+  @ApiOperation({ summary: 'List public files', description: 'List files marked as public, optionally filtered by folder id (omit or use "root" for top-level).' })
+  @ApiQuery({ name: 'folderId', required: false, description: 'Folder id; omit or use "root" for top-level' })
+  @ApiOkResponse({ description: 'Public files list', schema: { type: 'array', items: { $ref: getSchemaPath(File) } } })
+  @ApiNotFoundResponse({ description: 'Folder not found.' })
+  listPublicFiles(@Query('folderId') folderId?: string) {
+    const normalizedFolder = folderId === 'root' ? null : folderId;
+    return this.fileService.listPublicFiles(normalizedFolder);
+  }
+
   @Post('upload-request')
   @ApiOperation({
     summary: 'Start multipart upload',
@@ -89,6 +99,27 @@ export class FileController {
   @ApiBadRequestResponse({ description: 'File not found or bucket not configured.' })
   removeFile(@Param('id') id: string) {
     return this.fileService.deleteFile(id);
+  }
+
+  @Get(':id/download')
+  @ApiOperation({ summary: 'Get download URL', description: 'Returns a presigned URL to download the file (owner or public files only).' })
+  @ApiQuery({ name: 'ownerId', required: false, description: 'Requester owner id; required for private files.' })
+  @ApiOkResponse({
+    description: 'Presigned download URL',
+    schema: {
+      type: 'object',
+      properties: {
+        url: { type: 'string' },
+        fileName: { type: 'string' },
+        mime: { type: 'string' },
+        size: { type: 'string' },
+      },
+    },
+  })
+  @ApiBadRequestResponse({ description: 'Bucket not configured.' })
+  @ApiNotFoundResponse({ description: 'File not found or access denied.' })
+  getDownloadUrl(@Param('id') id: string, @Query('ownerId') ownerId?: string) {
+    return this.fileService.getDownloadUrl(id, ownerId);
   }
 
   @Get()

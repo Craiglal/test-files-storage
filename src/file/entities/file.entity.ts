@@ -47,6 +47,9 @@ export class File {
   @Column({ type: 'int', default: 1 })
   version!: number;
 
+  @Column({ type: 'boolean', default: false })
+  isPublic!: boolean;
+
   @CreateDateColumn()
   createdAt!: Date;
 

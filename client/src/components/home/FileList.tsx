@@ -3,11 +3,14 @@ export type FileItem = {
   name: string;
   sizeLabel: string;
   updatedAt: string;
+  ownerId: string;
+  isPublic: boolean;
+  canManage: boolean;
 };
 
 type FileListProps = {
   files: FileItem[];
-  onOpen: (file: FileItem) => void;
+  onOpen: (file: FileItem) => void | Promise<void>;
   onRename: (file: FileItem) => void;
   onDelete: (file: FileItem) => void;
 };
@@ -31,14 +34,14 @@ export function FileList({ files, onOpen, onRename, onDelete }: FileListProps) {
                 <div className="file-row__icon">📄</div>
                 <div className="file-row__body">
                   <div className="file-row__name">{file.name}</div>
-                  <div className="file-row__meta">{file.sizeLabel} · Updated {file.updatedAt}</div>
+                  <div className="file-row__meta">{file.sizeLabel} · Updated {file.updatedAt}{file.isPublic ? ' · Public' : ''}</div>
                 </div>
               </button>
               <div className="file-row__actions">
-                <button type="button" onClick={() => onRename(file)}>
+                <button type="button" onClick={() => onRename(file)} disabled={!file.canManage}>
                   Rename
                 </button>
-                <button type="button" className="danger" onClick={() => onDelete(file)}>
+                <button type="button" className="danger" onClick={() => onDelete(file)} disabled={!file.canManage}>
                   Delete
                 </button>
               </div>

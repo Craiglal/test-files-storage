@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsMimeType, IsOptional, IsString, IsUUID, Length, Max, Min } from 'class-validator';
+import { IsBoolean, IsMimeType, IsOptional, IsString, IsUUID, Length, Max, Min } from 'class-validator';
 
 export const MAX_FILE_BYTES = 2 * 1024 * 1024 * 1024; // 2GB
 
@@ -31,4 +31,9 @@ export class CreateUploadRequestDto {
   @IsOptional()
   @IsString()
   checksum?: string;
+
+  @ApiPropertyOptional({ description: 'Mark file as public', default: false })
+  @IsOptional()
+  @IsBoolean()
+  isPublic?: boolean;
 }

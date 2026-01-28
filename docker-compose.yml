@@ -31,7 +31,7 @@ services:
       context: ./client
       dockerfile: Dockerfile
     environment:
-      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3000}
+      VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost}
     ports:
       - "5173:4173"
     depends_on:

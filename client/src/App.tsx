@@ -1,7 +1,9 @@
 import { useEffect, useMemo } from 'react'
+import { ToastContainer } from 'react-toastify'
 import { AuthPage } from './components/auth/AuthPage'
 import { HomePage } from './components/home/HomePage'
 import { useAuthStore } from './store/useAuthStore'
+import 'react-toastify/dist/ReactToastify.css'
 import './App.scss'
 
 function App() {
@@ -16,11 +18,12 @@ function App() {
     return `${base}/api/auth/google`;
   }, [])
 
-  if (isAuthenticated) {
-    return <HomePage />
-  }
-
-  return <AuthPage googleAuthUrl={googleAuthUrl} />
+  return (
+    <>
+      {isAuthenticated ? <HomePage /> : <AuthPage googleAuthUrl={googleAuthUrl} />}
+      <ToastContainer position="bottom-right" theme="colored" newestOnTop closeOnClick pauseOnHover={false} />
+    </>
+  )
 }
 
 export default App

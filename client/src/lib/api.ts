@@ -1,6 +1,12 @@
 const AUTH_COOKIE_KEY = 'access_token=';
 const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 
+type ApiErrorPayload = {
+  message?: string | string[];
+  error?: string;
+  statusCode?: number;
+};
+
 function decodeJwtPayload(token: string): any {
   const parts = token.split('.');
   if (parts.length < 2) return null;
@@ -34,6 +40,35 @@ export function getOwnerId(): string {
 
 export function apiUrl(path: string) {
   return `${API_BASE}${path}`;
+}
+
+export async function getApiErrorMessage(response: Response, fallback = 'Request failed'): Promise<string> {
+  const clone = response.clone();
+
+  try {
+    const data = (await clone.json()) as ApiErrorPayload;
+    const fromMessage = Array.isArray(data.message) ? data.message.join('; ') : data.message;
+    if (fromMessage) return fromMessage;
+    if (data.error) return data.error;
+  } catch {
+    // no-op: fall through to text handling
+  }
+
+  try {
+    const text = await clone.text();
+    if (text) return text;
+  } catch {
+    // ignore text parsing failures
+  }
+
+  const suffix = response.status ? ` (${response.status})` : '';
+  return `${fallback}${suffix}`;
+}
+
+export function getErrorMessage(error: unknown, fallback = 'Something went wrong'): string {
+  if (error instanceof Error) return error.message || fallback;
+  if (typeof error === 'string') return error;
+  return fallback;
 }
 
 export function formatBytes(bytes: number): string {

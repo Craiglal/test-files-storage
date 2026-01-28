@@ -549,9 +549,6 @@ export function HomePage() {
           </div>
         </div>
         <div className="home__actions">
-          <button type="button" className="ghost" onClick={handleCreateFolder}>
-            + New Folder
-          </button>
           <button type="button" className="ghost" onClick={handleLogout}>
             Logout
           </button>
@@ -563,7 +560,12 @@ export function HomePage() {
           <div>
             <Breadcrumbs trail={trail} onSelect={handleGoTo} />
           </div>
-          <SearchBar value={query} onChange={handleQueryChange} onSubmit={handleSearch} />
+          <div className="home__top-actions">
+            <button type="button" className="ghost" onClick={handleCreateFolder}>
+              + New Folder
+            </button>
+            <SearchBar value={query} onChange={handleQueryChange} onSubmit={handleSearch} />
+          </div>
         </div>
 
         <section className="home__grid">

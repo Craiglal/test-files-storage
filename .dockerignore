@@ -4,8 +4,7 @@ node_modules
 dist
 coverage
 npm-debug.log*
-Dockerfile
-client/node_modules
-client/dist
 .env
 .env.*
+tmp
+client

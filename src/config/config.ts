@@ -20,4 +20,6 @@ export default registerAs('app', () => ({
     secret: process.env.JWT_SECRET || 'default_jwt_secret',
   },
   viteApiBaseUrl: process.env.VITE_API_BASE_URL || 'http://localhost',
+  frontendOrigin:
+    process.env.FRONTEND_ORIGIN || process.env.VITE_API_BASE_URL || 'http://localhost:5173',
 }));

@@ -251,7 +251,6 @@ export class FileService {
       throw new NotFoundException('File not found');
     }
 
-    // Only owner can download unless the file is public
     if (!file.isPublic) {
       if (!requesterId || file.ownerId !== requesterId) {
         throw new NotFoundException('File not found');

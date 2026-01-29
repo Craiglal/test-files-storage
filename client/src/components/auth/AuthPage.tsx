@@ -10,7 +10,7 @@ export function AuthPage({ googleAuthUrl }: AuthPageProps) {
     <div className="page auth-page">
       <div className="card">
         <header className="card__header">
-          <h1 className="brand">VrealSoft test task</h1>
+          <h1 className="brand">File Storage</h1>
         </header>
 
         <div className="card__body">

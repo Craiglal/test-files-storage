@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 
 type UploadPanelProps = {
-  onUpload: (files: FileList | null, isPublic: boolean) => void;
+  onUpload: (files: File[], isPublic: boolean) => void;
   isUploading: boolean;
   uploadProgress: number;
 };
@@ -11,12 +11,20 @@ const MAX_SIZE_BYTES = 2 * 1024 * 1024 * 1024; // 2GB hard limit
 
 export function UploadPanel({ onUpload, isUploading, uploadProgress }: UploadPanelProps) {
   const [isPublic, setIsPublic] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const wasUploading = useRef(false);
+
+  useEffect(() => {
+    if (wasUploading.current && !isUploading) {
+      setSelectedFiles([]);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+    wasUploading.current = isUploading;
+  }, [isUploading]);
 
   const handleSelect = (files: FileList | null, resetInput: () => void) => {
-    if (!files?.length) {
-      onUpload(files, isPublic);
-      return;
-    }
+    if (!files?.length) return;
 
     const oversize = Array.from(files).find((file) => file.size > MAX_SIZE_BYTES);
     if (oversize) {
@@ -25,7 +33,13 @@ export function UploadPanel({ onUpload, isUploading, uploadProgress }: UploadPan
       return;
     }
 
-    onUpload(files, isPublic);
+    setSelectedFiles(Array.from(files));
+    resetInput();
+  };
+
+  const handleStartUpload = () => {
+    if (!selectedFiles.length || isUploading) return;
+    onUpload(selectedFiles, isPublic);
   };
 
   return (
@@ -54,6 +68,7 @@ export function UploadPanel({ onUpload, isUploading, uploadProgress }: UploadPan
           id="file-input"
           type="file"
           multiple
+          ref={fileInputRef}
           onChange={(e) => handleSelect(e.target.files, () => { e.target.value = ''; })}
           disabled={isUploading}
           hidden
@@ -69,6 +84,21 @@ export function UploadPanel({ onUpload, isUploading, uploadProgress }: UploadPan
           />
           <span>Make file public</span>
         </label>
+      </div>
+      <div className="upload__footer">
+        <div className="muted small">
+          {selectedFiles.length
+            ? `${selectedFiles.length} file${selectedFiles.length > 1 ? 's' : ''} ready to upload`
+            : 'No files selected yet'}
+        </div>
+        <button
+          type="button"
+          className="primary"
+          onClick={handleStartUpload}
+          disabled={!selectedFiles.length || isUploading}
+        >
+          Upload
+        </button>
       </div>
     </div>
   );

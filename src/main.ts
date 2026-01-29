@@ -9,7 +9,7 @@ async function bootstrap() {
   const config = app.get<ConfigType<typeof appConfig>>(appConfig.KEY);
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('VReal API')
+    .setTitle('FileStorage API')
     .setDescription('API documentation')
     .setVersion('1.0')
     .addBearerAuth()

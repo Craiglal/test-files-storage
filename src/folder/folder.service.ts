@@ -86,7 +86,6 @@ export class FolderService {
       throw new BadRequestException('Search term is required');
     }
 
-    // Fetch folders and files in parallel for the given owner, matching name/filename.
     const [folders, files] = await Promise.all([
       this.folderRepository.find({
         where: { ownerId, name: ILike(`%${q}%`) },
@@ -126,7 +125,6 @@ export class FolderService {
       return await this.folderRepository.save(folder);
     } catch (err) {
       if (err instanceof QueryFailedError && (err as any).code === '23505') {
-        // Unique constraint on (ownerId, parentId, name)
         throw new BadRequestException('A folder with this name already exists at this level');
       }
       throw err;

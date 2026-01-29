@@ -77,7 +77,6 @@ export function HomePage() {
   useEffect(() => {
     const loadContents = async () => {
       try {
-        // const ownerId = getOwnerId();
         const currentFolderId = trail[trail.length - 1]?.id ?? 'root';
         const folderPath = currentFolderId || 'root';
 
@@ -423,10 +422,10 @@ export function HomePage() {
     }
   };
 
-  const handleUpload = async (fileList: FileList | null, isPublic: boolean) => {
-    if (!fileList?.length) return;
+  const handleUpload = async (files: File[], isPublic: boolean) => {
+    if (!files.length) return;
 
-    const filesArray = Array.from(fileList);
+    const filesArray = files;
     const totalBytes = filesArray.reduce((sum, f) => sum + f.size, 0) || 1;
     let uploadedBytes = 0;
 
@@ -545,7 +544,7 @@ export function HomePage() {
             <span>☁️</span>
           </div>
           <div>
-            <div className="home__brand-title">VReal Drive</div>
+            <div className="home__brand-title">Storage Drive</div>
           </div>
         </div>
         <div className="home__actions">

@@ -14,7 +14,6 @@ export default registerAs('app', () => ({
     clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
     callbackURL:
       process.env.GOOGLE_CALLBACK_URL ||
-      // Default to the actual Nest callback route
       'http://localhost/api/auth/google/callback',
   },
   jwt: {
